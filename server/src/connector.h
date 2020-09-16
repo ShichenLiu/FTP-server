@@ -1,7 +1,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <ifaddrs.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "const.h"
+
+#define DEFAULT_PERMISSION 0700
 
 typedef struct Connector{
     char path[100];
@@ -422,7 +426,9 @@ void RETR(Connector* connector, char* msg) {
 
 void MKD(Connector* connector, char* param) {
     int done;
-    char path[100], cpath[100], cmd[100];
+    char path[100], cpath[100];
+    struct stat st = {0};
+    
     getcwd(path, 100);
     if (param[0] == '/') {
         sprintf(cpath, "%s%s", connector->root, param);
@@ -430,8 +436,21 @@ void MKD(Connector* connector, char* param) {
     else {
         sprintf(cpath, "%s%s/%s", connector->root, connector->path, param);
     }
-    sprintf(cmd, "mkdir %s", cpath);
-    system(cmd);
+
+
+    if (stat(cpath, &st) == -1) {
+        mkdir(cpath, DEFAULT_PERMISSION);
+        if (write(connector->sockfd, S250, strlen(S250)) == -1) {
+            printf("write wrong\n");
+            return;
+        }
+    } else {
+        if (write(connector->sockfd, S550C, strlen(S550C)) == -1) {
+            printf("write wrong\n");
+            return;
+        }
+    }
+
     if (chdir(cpath) == 0) {
         done = 1;
         printf("path: %s\n", connector->path);
@@ -727,4 +746,5 @@ void responseClient(Connector* connList, int sockfd, char* msg) {
     else if (iscmd(msg, "MKD")) MKD(connector, param);
     else if (iscmd(msg, "PWD")) PWD(connector);
     else QUIT(connector, connList);
+    free(param);
 }
