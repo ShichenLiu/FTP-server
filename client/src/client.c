@@ -7,6 +7,7 @@
 #include <string.h>
 #include <memory.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define printf(...) fprintf(stderr,__VA_ARGS__)
 
@@ -37,14 +38,21 @@ int iscmd(char* msg, char* cmd) {
 }
 
 int parsecmd(char* input, Status* status) {
-    FILE *f;
+    FILE *f = NULL;
     char cmd[100];
-    int info[10], connfd;
+    int info[10], connfd = 0;
     struct sockaddr_in addr;
+    
+    memset(cmd, '\0', sizeof(cmd));
+    
+    for(int p = 0 ; p < sizeof(info) ; p++)
+    	info[p] = 0;
+    
     if (iscmd(input, "PWD")) return 10;
     if (iscmd(input, "CWD")) return 13;
-    strcpy(cmd, input + 5);
-    cmd[strlen(cmd) - 2] = '\0';
+    snprintf(cmd, sizeof(cmd) - 1, "%s", input + 5);
+    cmd[sizeof(cmd) - 1] = '\0';
+    //cmd[strlen(cmd) - 2] = '\0';
     if (iscmd(input, "SYST")) return 6;
     if (iscmd(input, "TYPE")) return 7;
     if (iscmd(input, "PASV")) return 8;
@@ -79,7 +87,8 @@ int parsecmd(char* input, Status* status) {
     if (iscmd(input, "PORT")) {
         sscanf(input, "PORT %d,%d,%d,%d,%d,%d", &info[0], &info[1], &info[2], &info[3], &info[4], &info[5]);
         status->fileport = info[4] * 256 + info[5];
-        sprintf(status->filehost, "%d.%d.%d.%d", info[0], info[1], info[2], info[3]);
+        snprintf(status->filehost, 99, "%d.%d.%d.%d", info[0], info[1], info[2], info[3]);
+        status->filehost[99] = '\0';
         return 9;
     }
     if (iscmd(input, "STOR")) {
@@ -107,7 +116,8 @@ int parsecmd(char* input, Status* status) {
             return -1;
         }
         fclose(f);
-        strcpy(status->filename, cmd);
+        snprintf(status->filename, 99, "%s", cmd);
+        status->filename[99] = '\0';
         return 11;
     }
     if (iscmd(input, "RETR")) {
@@ -129,19 +139,23 @@ int parsecmd(char* input, Status* status) {
                 return -1;
             }
         }
-        strcpy(status->filename, cmd);
+        snprintf(status->filename, 99, "%s", cmd);
+        status->filename[99] = '\0';
         return 12;
     }
     return -1;
 }
 
 void replyServer(Status* status, char* msg) {
-    int index, i;
+    int index = 0, i = 0;
     struct sockaddr_in addr;
     char buff[4096];
-    int p, len;
-    FILE* f;
-    int p1, p2, h1, h2, h3, h4;
+    int p = 0, len = 0;
+    FILE* f = NULL;
+    int p1 = 0, p2 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0;
+    
+    memset(buff, '\0', sizeof(buff));
+    
     if (isnum(msg[0]) && isnum(msg[1]) && isnum(msg[2]) && msg[3] == ' ')
         index = (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
     else {
@@ -160,7 +174,7 @@ void replyServer(Status* status, char* msg) {
     switch (index) {
     case 150:
         if (status->status == 14) { // LIST
-            int connfd;
+            int connfd = 0;
             if (status->pasv == 1) { // PASV
                 connfd = status->filefd;
             }
@@ -193,7 +207,7 @@ void replyServer(Status* status, char* msg) {
             status->filefd = -1;
         }
         if (status->status == 12) { // RETR
-            int connfd;
+            int connfd = 0;
             if (status->pasv == 1) {
                 connfd = status->filefd;
             }
@@ -229,7 +243,7 @@ void replyServer(Status* status, char* msg) {
             status->status = 16;
         }
         if (status->status == 11) { // STOR
-            int connfd;
+            int connfd = 0;
             if (status->pasv == 1) {
                 connfd = status->filefd;
             }
@@ -324,7 +338,8 @@ void replyServer(Status* status, char* msg) {
                     break;
                 }
             }
-            sprintf(status->filehost, "%d.%d.%d.%d", h1, h2, h3, h4);
+            snprintf(status->filehost, 99, "%d.%d.%d.%d", h1, h2, h3, h4);
+            status->filehost[99] = '\0';
             status->fileport = htons(p1 * 256 + p2);
             status->status = 4;
         }
@@ -385,31 +400,38 @@ void replyServer(Status* status, char* msg) {
 }
 
 int main(int argc, char **argv) {
-    int sockfd;
-    Status* status;
-	struct sockaddr_in addr;
-	char sentence[8192];
-	int len;
-	int p, i;
+    int sockfd = 0;
+    Status* status = NULL;
+    struct sockaddr_in addr;
+    char sentence[8192];
+    int len = 0;
+    int p = 0, i = 0;
+    
+    memset(CUSER, '\0', sizeof(CUSER));
+    memset(CPASS, '\0', sizeof(CPASS));
+    memset(sentence, '\0', sizeof(sentence));
 
     status = (Status*)malloc(sizeof(Status));
     status->status = 0;
     status->path = NULL;
     status->port = htons(21);
-    strcpy(status->host, "127.0.0.1");
+    snprintf(status->host, 99, "%s", "127.0.0.1");
+    status->host[99] = '\0';
     status->fileport = -1;
     status->filefd = -1;
     status->gui = 0;
     status->pasv = -1;
 
-    strcpy(CUSER, "USER anonymous\r\n");
-    strcpy(CPASS, "PASS abc@mail.com\r\n");
-
+    snprintf(CUSER, sizeof(CUSER) - 1, "%s", "USER anonymous\r\n");
+    CUSER[sizeof(CUSER) - 1] = '\0';
+    snprintf(CPASS, sizeof(CPASS) - 1, "%s", "PASS abc@mail.com\r\n");
+    CPASS[sizeof(CPASS) - 1] = '\0';
+    
     for (i = 0; i < argc; i++) {
-        if (!strcmp(argv[i], "-user")) sprintf(CUSER, "USER %s\r\n", argv[++i]);
-        else if (!strcmp(argv[i], "-pass")) sprintf(CPASS, "PASS %s\r\n", argv[++i]);
+        if (!strcmp(argv[i], "-user")) snprintf(CUSER, sizeof(CUSER) - 1, "USER %s\r\n", argv[++i]);
+        else if (!strcmp(argv[i], "-pass")) snprintf(CPASS, sizeof(CPASS) - 1, "PASS %s\r\n", argv[++i]);
         else if (!strcmp(argv[i], "-gui")) status->gui = 1;
-        else if (!strcmp(argv[i], "-host")) sprintf(status->host, "%s", argv[++i]);
+        else if (!strcmp(argv[i], "-host")) snprintf(status->host, 99, "%s", argv[++i]);
         else if (!strcmp(argv[i], "-port")) {sscanf(argv[++i], "%d", &status->port); status->port = htons(status->port);}
     }
     
