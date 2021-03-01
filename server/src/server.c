@@ -17,7 +17,7 @@ char defaultDir[50], defaultPort[10];
 
 static int unblockSocket(int sockfd)
 {
-    int flags;
+    int flags = 0;
     flags = fcntl(sockfd, F_GETFL, 0);
     if (flags == -1) {
         perror ("fcntl get");
@@ -35,7 +35,7 @@ static int unblockSocket(int sockfd)
 static int createAndBind(char *port)
 {
     struct sockaddr_in addr;
-    int sockfd;
+    int sockfd = 0;
     if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
         printf("Error socket(): %s(%d)\n", strerror(errno), errno);
         return 1;
@@ -53,18 +53,21 @@ static int createAndBind(char *port)
 
 int main (int argc, char *argv[])
 {
-    int sockfd, flag;
-    int efd, i;
+    int sockfd = 0, flag = 0;
+    int efd = 0, i = 0;
     struct epoll_event event;
     struct epoll_event *events;
-    Connector* connList;
+    Connector* connList = NULL;
     
-    strcpy(defaultPort, "21");
-    strcpy(defaultDir, "/tmp");
+    memset(defaultDir, '\0', sizeof(defaultDir));
+    memset(defaultPort, '\0', sizeof(defaultPort));
+    
+    snprintf(defaultPort, sizeof(defaultPort) - 1, "%s", "21");
+    snprintf(defaultDir, sizeof(defaultDir) - 1, "%s", "/tmp");
 
     for (i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "-port")) strcpy(defaultPort, argv[++i]);
-        else if (!strcmp(argv[i], "-root")) strcpy(defaultDir, argv[++i]);
+        if (!strcmp(argv[i], "-port")) snprintf(defaultPort, sizeof(defaultPort) - 1, "%s", argv[++i]);
+        else if (!strcmp(argv[i], "-root")) snprintf(defaultDir, sizeof(defaultDir) - 1, "%s", argv[++i]);
         else {
             printf("wrong arguments![%s]", argv[i]);
             return 1;
@@ -102,7 +105,7 @@ int main (int argc, char *argv[])
     events = calloc(MAXEVENTS, sizeof event);
 
     while (1) {
-        int n, i;
+        int n = 0, i = 0;
         n = epoll_wait(efd, events, MAXEVENTS, -1);
         for (i = 0; i < n; i++) {
             if ((events[i].events & EPOLLERR) ||
@@ -116,8 +119,12 @@ int main (int argc, char *argv[])
                 while (1) {
                     struct sockaddr addr;
                     socklen_t len;
-                    int connfd;
+                    int connfd = 0;
                     char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+                    
+                    memset(hbuf, '\0', sizeof(hbuf));
+                    memset(sbuf, '\0', sizeof(sbuf));
+                    
                     len = sizeof addr;
                     connfd = accept(sockfd, &addr, &len);
                     if (connfd == -1) {
@@ -155,8 +162,11 @@ int main (int argc, char *argv[])
             }
             else {
                 int done = 0;
-                ssize_t count;
+                ssize_t count = 0;
                 char buf[512];
+                
+                memset(buf, '\0', sizeof(buf));
+                
                 while (1) {
                     count = read(events[i].data.fd, buf, sizeof buf);
                     if (count == -1) {
@@ -182,7 +192,9 @@ int main (int argc, char *argv[])
             }
         }
     }
-    free(events);
+    
+    if(events != NULL)
+    	free(events);
     close(sockfd);
     return EXIT_SUCCESS;
 }
