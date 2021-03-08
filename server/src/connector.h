@@ -70,7 +70,7 @@ void appendConnector(Connector* head, int sockfd, char* dir) {
 void deleteConnector(Connector* head, int sockfd) {
     Connector* node = NULL;
     Connector* tmp = NULL;
-    
+
     for (node = head; node->next != NULL; node = node->next) {
         if (node->next->sockfd == sockfd) {
             tmp = node->next;
@@ -89,7 +89,7 @@ void deleteConnector(Connector* head, int sockfd) {
 
 Connector* findConnector(Connector* head, int sockfd) {
     Connector* node = NULL;
-    
+
     for (node = head; node->next != NULL; node = node->next) {
         if (node->next->sockfd == sockfd) {
             return node->next;
@@ -101,7 +101,7 @@ Connector* findConnector(Connector* head, int sockfd) {
 void dot2comma(char *buf) {
   int len = strlen(buf);
   int i = 0;
-  
+
   for(i = 0; i < len; i++) {
       if (buf[i] == '.') {
         buf[i] = ',';
@@ -123,14 +123,14 @@ char* getIP() {
             continue;
         }
         char mask[INET_ADDRSTRLEN];
-        
+
         memset(mask, '\0', sizeof(mask));
-        
+
         void* ptr = &((struct sockaddr_in*) iter->ifa_netmask)->sin_addr;
         inet_ntop(AF_INET, ptr, mask, INET_ADDRSTRLEN);
         if (strcmp(mask, "255.0.0.0") == 0) {
             continue;
-        }        
+        }
         void* tmp = &((struct sockaddr_in *) iter->ifa_addr)->sin_addr;
         char *rlt = (char*)malloc(20);
         memset(rlt, 0, 20);
@@ -163,9 +163,9 @@ char* getcmd(char* msg) {
     int i = 0;
     char *param = NULL;
     param = (char*)malloc((sizeof(char)) * strlen(msg));
-    
+
     memset(param, '\0', (sizeof(char)) * strlen(msg));
-    
+
     for (i = 0; i < strlen(msg); i++) {
         if (msg[i] == ' ') {
             snprintf(param, ((sizeof(char)) * strlen(msg)) - 1, "%s", msg + i + 1);
@@ -230,11 +230,11 @@ void PASV(Connector* connector) {
     int p2 = 0;
     struct sockaddr_in addr;
     char msg[100];
-    
+
     memset(msg, '\0', sizeof(msg));
-    
+
     memset(&addr, 0, sizeof(addr));
-    sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);    
+    sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     for (i = 8192; i < 60000; i++) {
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -286,11 +286,11 @@ void STOR(Connector* connector, char* msg) {
     FILE *fin = NULL;
     char buf[512];
     int count = 0, connfd = 0, i = 0;
-    
+
     memset(buf, '\0', sizeof(buf));
     memset(file, '\0', sizeof(file));
     memset(filename, '\0', sizeof(filename));
-    
+
     if (connector->mode == 0) {
         printf("need pasv/port\n");
         return;
@@ -349,7 +349,7 @@ void STOR(Connector* connector, char* msg) {
         }
         printf("accepted\n");
     }
-    while (1) {        
+    while (1) {
         count = read(connfd, buf, sizeof buf);
         if (count == -1) {
             printf("read error\n");
@@ -378,10 +378,10 @@ void RETR(Connector* connector, char* msg) {
     FILE *fin = NULL;
     char buf[4096];
     int count = 0, connfd = 0, p = 0;
-    
+
     memset(buf, '\0', sizeof(buf));
     memset(file, '\0', sizeof(file));
-    
+
     if (connector->mode == 0) {
         printf("need pasv/port\n");
         return;
@@ -422,7 +422,7 @@ void RETR(Connector* connector, char* msg) {
     }
     else if (connector->mode == 1) { // PASV
         struct sockaddr addr;
-        socklen_t len; 
+        socklen_t len;
         connfd = accept(connector->filefd, &addr, &len);
         if (connfd == -1) {
             printf("accept error\n");
@@ -463,10 +463,10 @@ void MKD(Connector* connector, char* param) {
     int done = 0;
     char path[100], cpath[100];
     struct stat st = {0};
-    
+
     memset(path, '\0', sizeof(path));
     memset(cpath, '\0', sizeof(cpath));
-    
+
     getcwd(path, 100);
     if (param[0] == '/') {
         snprintf(cpath, sizeof(cpath) - 1, "%s%s", connector->root, param);
@@ -517,10 +517,10 @@ void MKD(Connector* connector, char* param) {
 void RMD(Connector* connector, char* param) {
     int done = 0;
     char path[100], cpath[100];
-    
+
     memset(path, '\0', sizeof(path));
     memset(cpath, '\0', sizeof(cpath));
-    
+
     getcwd(path, 100);
     if (param[0] == '/') {
         snprintf(cpath, sizeof(cpath) - 1, "%s%s", connector->root, param);
@@ -557,11 +557,11 @@ void RMD(Connector* connector, char* param) {
 void CWD(Connector* connector, char* param) {
     int done = 0;
     char path[100], cpath[100], croot[100];
-    
+
     memset(path, '\0', sizeof(path));
     memset(cpath, '\0', sizeof(cpath));
     memset(croot, '\0', sizeof(croot));
-    
+
     getcwd(path, 100);
     if (param[0] == '/') {
         snprintf(cpath, sizeof(cpath) - 1, "%s%s", connector->root, param);
@@ -577,9 +577,9 @@ void CWD(Connector* connector, char* param) {
         snprintf(croot, sizeof(croot) - 1, "%s/", croot);
         croot[sizeof(croot) - 1] = '\0';
         if (strstr(croot, cpath) == croot) done = 1;
-        else if (strstr(cpath, connector->root) != cpath) done = 0; 
+        else if (strstr(cpath, connector->root) != cpath) done = 0;
         else {
-            sprintf(connector->path, 99, "%s", cpath + strlen(connector->root));
+            snprintf(connector->path, 99, "%s", cpath + strlen(connector->root));
             connector->path[99] = '\0';
             if (strlen(connector->path) == 0)
                 snprintf(connector->path, 99, "%s", "/");
@@ -610,7 +610,7 @@ void DELE(Connector* connector, char* param) {
     FILE *fin = NULL;
 
     memset(path, '\0', sizeof(path));
-    
+
     if (param[0] == '/') {
         snprintf(path, sizeof(path) - 1, "%s%s", connector->root, param);
         path[sizeof(path) - 1] = '\0';
@@ -640,12 +640,12 @@ void LIST(Connector* connector) {
     char buf[4096];
     char cmdls[200];
     int count = 0, connfd = 0, p = 0;
-    
+
     FILE *fname = NULL;
-    
+
     memset(buf, '\0', sizeof(buf));
     memset(cmdls, '\0', sizeof(cmdls));
-    
+
     if (connector->mode == 0) {
         printf("need pasv/port\n");
         return;
@@ -685,7 +685,7 @@ void LIST(Connector* connector) {
         }
         printf("accepted\n");
     }
-    
+
     snprintf(cmdls, sizeof(cmdls) - 1, "ls -l %s%s", connector->root, connector->path);
     cmdls[sizeof(cmdls) - 1] = '\0';
     fname = popen(cmdls, "r");
@@ -722,9 +722,9 @@ void RNFR(Connector* connector, char* param) {
     /* potential danger, without checking the path*/
     char path[200];
     FILE *fin = NULL;
-    
+
     memset(path, '\0', sizeof(path));
-    
+
     if (param[0] == '/') {
         snprintf(path, sizeof(path) - 1, "%s%s", connector->root, param);
         path[sizeof(path) - 1] = '\0';
@@ -755,9 +755,9 @@ void RNFR(Connector* connector, char* param) {
 void RNTO(Connector* connector, char* param) {
     char path[200];
     FILE *fin = NULL;
-    
+
     memset(path, '\0', sizeof(path));
-    
+
     if (param[0] == '/') {
         snprintf(path, sizeof(path) - 1, "%s%s", connector->root, param);
         path[sizeof(path) - 1] = '\0';
@@ -803,7 +803,7 @@ void QUIT(Connector* connector, Connector* connList) {
 void responseClient(Connector* connList, int sockfd, char* msg) {
     Connector* connector = NULL;
     char *param = NULL;
-    
+
     connector = findConnector(connList, sockfd);
     param = getcmd(msg);
     if (connector->rnflag != 0) connector->rnflag--;
